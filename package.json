@@ -1,5 +1,5 @@
 {
-  "name": "my-turborepo",
+  "name": "E-draw",
   "private": true,
   "scripts": {
     "build": "turbo build",
