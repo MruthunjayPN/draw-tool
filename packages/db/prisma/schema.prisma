@@ -1,0 +1,43 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User{
+  id          String    @id @default(uuid())
+  email       String    @unique
+  password    String 
+  name        String
+  photo       String  //url to the photo which we will store in object store
+  rooms       Room[]   //a single can be admin of many rooms , a room can have only 1 admin -> one to many relationship
+  chats        Chat[] //a user can send many messages  
+}
+
+model Room {
+  roomId      Int       @id @default(autoincrement())
+  slug        String    @unique
+  createdAt   DateTime  @default(now())
+  adminId     String 
+  admin       User      @relation(fields: [adminId] , references: [id])
+  //admin: A virtual(not a real entry) field in the Profile model that represents the relationship to the User model. It is used for querying and accessing the related User record.
+  messages    Chat[]
+}
+
+model Chat {
+  id          Int       @id @default(autoincrement())
+  roomId      Int
+  message     String  
+  userId      String    //who has sent the message
+  room        Room      @relation(fields: [roomId] , references: [roomId])
+  user        User      @relation(fields: [userId] , references: [id])
+}
