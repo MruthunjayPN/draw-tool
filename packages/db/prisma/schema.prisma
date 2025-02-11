@@ -18,9 +18,9 @@ model User{
   email       String    @unique
   password    String 
   name        String
-  photo       String  //url to the photo which we will store in object store
+  photo       String?  //url to the photo which we will store in object store
   rooms       Room[]   //a single can be admin of many rooms , a room can have only 1 admin -> one to many relationship
-  chats        Chat[] //a user can send many messages  
+  chats       Chat[] //a user can send many messages  
 }
 
 model Room {
@@ -40,4 +40,4 @@ model Chat {
   userId      String    //who has sent the message
   room        Room      @relation(fields: [roomId] , references: [roomId])
   user        User      @relation(fields: [userId] , references: [id])
-}
+} 
