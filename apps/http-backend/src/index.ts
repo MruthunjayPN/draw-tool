@@ -45,18 +45,31 @@ app.post('/signup', async (req: Request, res: Response) => {
   }
 });
 
-app.post('/signin' ,  (req, res)=>{
+//@ts-expect-error
+app.post('/signin' , async (req, res)=> {
+  const data = SigninSchema.safeParse(req.body);
+  if(!data.success) { 
+      res.status(403).json({msg : "incorrect inputs"});
+      return;
+  }
 
-    const data = SigninSchema.safeParse(req.body);
-    if(!data.success) { 
-        res.status(403).json({msg : "incorrect inputs"});
-        return;
-    }
-
-    const userId = 564;
-    const token = jwt.sign({userId}, JWT_SECRET);
-    res.json(token);
-})
+   // Find the user by email
+  const { email, password } = req.body;
+  const user = await prisma.user.findUnique({
+    where: { email },
+  });
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+  // Compare the input password with the hashed password
+  const isPasswordValid = await bcrypt.compare(password, user.password);
+  if (!isPasswordValid) {
+    return res.status(401).json({ error: 'Invalid password' });
+  }
+  // Generate a JWT token
+  const token = jwt.sign({ id: user.id }, JWT_SECRET);
+  return res.json({ token });
+});
 
 app.post('/room' , middleware , (req, res)=>{
     
