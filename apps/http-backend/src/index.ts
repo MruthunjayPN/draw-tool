@@ -53,34 +53,57 @@ app.post('/signin' , async (req, res)=> {
       return;
   }
 
-   // Find the user by email
-  const { email, password } = req.body;
-  const user = await prisma.user.findUnique({
-    where: { email },
-  });
-  if (!user) {
-    return res.status(404).json({ error: 'User not found' });
+  try {
+    // Find the user by email
+    const { email, password } = req.body;
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    // Compare the input password with the hashed password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ error: 'Invalid password' });
+    }
+    // Generate a JWT token
+    const token = jwt.sign({ id: user.id }, JWT_SECRET);
+    return res.json({ token });
   }
-  // Compare the input password with the hashed password
-  const isPasswordValid = await bcrypt.compare(password, user.password);
-  if (!isPasswordValid) {
-    return res.status(401).json({ error: 'Invalid password' });
+  catch(e){
+    res.json({msg : "error while signing in"});
   }
-  // Generate a JWT token
-  const token = jwt.sign({ id: user.id }, JWT_SECRET);
-  return res.json({ token });
 });
 
-app.post('/room' , middleware , (req, res)=>{
+app.post('/room' , middleware , async (req, res)=>{
     
-    const data = CreateRoomSchema.safeParse(req.body);
-    if(!data.success) { 
-        res.status(403).json({msg : "incorrect inputs"});
-        return;
-    }
-
+  const parsedData = CreateRoomSchema.safeParse(req.body);
+  if(!parsedData.success) { 
+      res.status(403).json({msg : "incorrect inputs"});
+      return;
+  }
+    
+  try {
+    //@ts-ignore
+    const userId = req.userId
+    
     //db call
-    res.json({rootID : 145564});
-})
+    const room = await prisma.room.create({
+      data : {
+        slug : parsedData.data.name , 
+        adminId : userId
+      }
+    })
+    res.json({
+      roomId : room.roomId
+    })
+  }
+  catch(e){
+    console.log(e);
+    res.json({
+      msg : "error while creating room -  room already exists with this name" })
+  }
+});
 
 app.listen(3000);
