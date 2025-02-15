@@ -1,7 +1,9 @@
 import jwt, { JwtPayload } from "jsonwebtoken"
 import { WebSocket, WebSocketServer } from 'ws';
+import prisma from "@repo/db/client";
 import { JWT_SECRET } from "@repo/backend-common/config";
 const wss = new WebSocketServer({ port: 8080 });
+
 
 interface User {
   ws : WebSocket
@@ -12,17 +14,23 @@ interface User {
 const users :User[] = [];
 
 function checkUser(token : string): string | null{
-  const decoded = jwt.verify(token , JWT_SECRET)
-  //the typescript may complain about the decoded - whether stirng or payload ,so
-  if(typeof decoded == "string"){
-    return null ;
+  try {
+    const decoded = jwt.verify(token , JWT_SECRET)
+    //the typescript may complain about the decoded - whether stirng or payload ,so
+    if(typeof decoded == "string"){
+      return null ;
+    }
+    if(!decoded || !decoded.id ){
+    //other way to check decoded is string or jwtpayload - if above typeof check is not performed  
+    // if(!decoded || !(decoded as JwtPayload).userId){
+      return null;
+    }
+    return decoded.id;
   }
-  if(!decoded || !decoded.id ){
-  //other way to check decoded is string or jwtpayload - if above typeof check is not performed  
-  // if(!decoded || !(decoded as JwtPayload).userId){
+  catch(e){
     return null;
   }
-  return decoded.id;
+  
 }
 
 wss.on('connection', function connection(ws , request) {
@@ -45,7 +53,7 @@ wss.on('connection', function connection(ws , request) {
     rooms : [],
     ws
   })
-  ws.on('message', function message(data) {
+  ws.on('message',async function message(data) {
     const parsedData =JSON.parse(data as unknown as string); 
 
     if(parsedData.type=== "join_room"){
@@ -66,6 +74,14 @@ wss.on('connection', function connection(ws , request) {
       const roomId = parsedData.roomID;
       const message = parsedData.messgae ;  //checks : message is not too long, doenst have anythng vulgar etcc.
 
+      //we should put message in db before broadcasting message , coz db call may fail -> better approach is queue
+      await prisma.chat.create({
+        data : {
+          roomId ,
+          userId,
+          message
+        }
+      })
       users.forEach(user => {
         if(user.rooms.includes(roomId)){
           user.ws.send(JSON.stringify({

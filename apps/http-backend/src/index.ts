@@ -106,4 +106,21 @@ app.post('/room' , middleware , async (req, res)=>{
   }
 });
 
+//@ts-ignore
+app.get('/chats/:roomId', async (req, res)=>{
+  const roomId = Number(req.params.roomId);
+  const messages = await prisma.chat.findMany({
+    where: {
+      roomId: roomId
+    },
+    //showing messgaes in descending order : last messgae will be displayed first
+    orderBy: {
+      roomId : "desc"
+    },
+    //50 messgaes at a time
+    take : 50
+  });
+  res.json({messages});
+})
+
 app.listen(3000);
